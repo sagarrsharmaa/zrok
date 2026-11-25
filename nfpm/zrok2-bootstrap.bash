@@ -234,6 +234,16 @@ zrok2_admin() {
     fi
 }
 
+# Print the token of the first 'public' frontend in the output of
+# "zrok2 admin list frontends", read from stdin.  That output is a bordered
+# table whose rows begin with a '│', so the token is the first field that is
+# not a border, not awk's $1.  awk reads to the end instead of exiting at the
+# match, so a zrok2 piped into it is never killed by SIGPIPE under pipefail.
+public_frontend_token() {
+    awk '/public/ && t == "" {for (i = 1; i <= NF; i++) if ($i != "│") {t = $i; break}}
+         END {if (t != "") print t}'
+}
+
 # ── Step 1: Install and configure RabbitMQ ───────────────────────────────────
 
 step_rabbitmq() {
@@ -778,7 +788,7 @@ step_create_frontend() {
     local existing
     existing=$(zrok2_admin list frontends 2>/dev/null || true)
     if echo "$existing" | grep -q 'public'; then
-        FRONTEND_TOKEN=$(echo "$existing" | awk '/public/ {print $1; exit}')
+        FRONTEND_TOKEN=$(echo "$existing" | public_frontend_token)
         info "Frontend already exists with token: $FRONTEND_TOKEN"
 
         # Ensure it's marked dynamic
@@ -813,7 +823,7 @@ step_create_frontend() {
 
     if [[ -z "$FRONTEND_TOKEN" ]]; then
         # Try to extract from list
-        FRONTEND_TOKEN=$(zrok2_admin list frontends 2>/dev/null | awk '/public/ {print $1; exit}')
+        FRONTEND_TOKEN=$(zrok2_admin list frontends 2>/dev/null | public_frontend_token)
     fi
 
     info "Created dynamic frontend with token: $FRONTEND_TOKEN"
@@ -984,7 +994,7 @@ step_map_namespace_frontend() {
     info "Step 12: Map namespace to frontend"
 
     if [[ -z "${FRONTEND_TOKEN:-}" ]]; then
-        FRONTEND_TOKEN=$(zrok2_admin list frontends 2>/dev/null | awk '/public/ {print $1; exit}')
+        FRONTEND_TOKEN=$(zrok2_admin list frontends 2>/dev/null | public_frontend_token)
     fi
 
     if [[ -z "${FRONTEND_TOKEN:-}" ]]; then
@@ -1015,7 +1025,7 @@ step_frontend_config() {
     fi
 
     if [[ -z "${FRONTEND_TOKEN:-}" ]]; then
-        FRONTEND_TOKEN=$(zrok2_admin list frontends 2>/dev/null | awk '/public/ {print $1; exit}')
+        FRONTEND_TOKEN=$(zrok2_admin list frontends 2>/dev/null | public_frontend_token)
     fi
 
     info "Generating $FRONTEND_CONFIG..."

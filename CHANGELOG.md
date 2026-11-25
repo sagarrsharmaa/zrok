@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+FIX: The `zrok2-instance` Docker Compose stack no longer loses its frontend token on restart. Every `docker compose up` after the first wrote `frontend_token: │` to `frontend.yaml`, so the dynamic frontend received no mappings and every public share answered "share not found". `zrok2-bootstrap.bash` took the token from the first field of the bordered `zrok2 admin list frontends` table, which is the border character; it now takes the first field that is not a border. Re-running the Linux bootstrap had the same fault and used `│` wherever it needed the existing frontend's token (https://github.com/openziti/zrok/issues/1296).
+
 ## v2.0.11
 
 FIX: The metrics bridge with a file source could skip usage events, or pass on a partial event that was then discarded, when it read the file while OpenZiti was writing to it. Some usage consequently went unrecorded. The file source now delivers each event once, when its line is complete.
